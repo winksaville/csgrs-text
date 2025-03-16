@@ -2,53 +2,55 @@
 
 Experiment with csgrs text rendering API.
 
-I wanted to make the text 1mm high and experimenting with the scale factor
-I found for "HHI" that 8.1307502 was pretty close as you can see from the
-extents Z value:
-```
-$ cargo run -- HHI 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf
-   Compiling text v0.1.0 (/home/wink/data/prgs/3dprinting/text)
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.27s
-     Running `target/debug/text HHI 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf`
-text_3d_bb.extents()=[[1.8109243797831487, 1.0, 1.0000000055415066]]
-```
+I ran into some issues with the text rendering API in csgrs while
+testing in [csgrs-text](https://github.com/winksaville/csgrs-text)
 
-Next I used a lower case "i" and it's actually taller than the upper
-case "H" or "I" so you need to adjust the scale factor more to fix that.
-For the example I left it the same.
+1. There needs to be a char_spacing_scale parameter to `CSG::text` so that
+   consecutive characters would be rendered "properly". Below is an example
+   of "HHI" rendered and there is no space between the characters:
 
-```sh
-$ cargo run -- HHi 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
-     Running `target/debug/text HHi 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf`
-text_3d_bb.extents()=[[1.6470588326565991, 1.0, 1.0322128908740762]]
-```
+   ![text_HHI](text_HHI_text_scale-8.131_font-NotoSans-VariableFont_wdth_wght.stl.png)
 
-Ideally, we should be able to pass the size relative to unit
-scale of the current CSG cordinate system. In my case I assume
-1 is 1mm. So by using the unit scale it could work for everyone.
-So I'd like the 1 instead of 8.1307502.
+2. I couldn't easily figure out how to scale the text to a specific size.
+   I think the scale parameter should instead be the height of the bounding
+   box instead of a scale. That way I'll know the maximum height rendered
+   characters would be, making it easier to place the text.
 
-There is related gotcha, since different letters in a font
-have different heights, you need to adjust the scale factor
-for the letters actually used in the string, this seems odd. The
-current values are "real" but if you needed to reserve space
-"permanetly" for the text it would be nice if there was anothermode
-where the bounding box is calculated as if the string was rendered
-and with tallest of any character in the font so that height is
-always the same for any string of a particular font.
+   Here is an example, I wanted to render the characters to be 1mm in high.
+   With the current API I had to experiment with the scale factor to get the
+   text to the size I wanted. And in this case 8.1307502 was the scale factor
+   for "HHI" to be about 1mm high. It would be preferrable if rather than a
+   scale we could specify the height in coordinate system units.
 
-And there is one other change that would be very nice, if you
-look at the rendered stl output you see that there is no space
-between full size letters like H. I'd like to see a char_spacing_scale
-parameter add to `CSG::text` so that consecutive characters would be rendered "properly".
+   See the extents below from csgrs-text:
 
-![text_HHI](text_HHI_text_scale-8.131_font-NotoSans-VariableFont_wdth_wght.stl.png)
+   ```
+   $ cargo run -- HHI 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf
+      Compiling text v0.1.0 (/home/wink/data/prgs/3dprinting/text)
+       Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.27s
+        Running `target/debug/text HHI 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf`
+   text_3d_bb.extents()=[[1.8109243797831487, 1.0, 1.0000000055415066]]
+   ```
 
-Here you can also see the lower case "i" is taller than the upper case "H":
+3. Using height instead of scale would also solve another problem.
+   Currently the extents of a bounding box is defined by the characters
+   rendered. That means when characters have different heights you might
+   have difficulty placing the text.
 
-![text_HHi](text_HHi_text_scale-8.131_font-NotoSans-VariableFont_wdth_wght.stl.png)
+   Example, below we have "HHi" and it's bounding box height is 1.0322128908740762,
+   but the above "HHI" example the bounding box was 1.0000000055415066:
+   ```sh
+   $ cargo run -- HHi 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf
+       Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.06s
+        Running `target/debug/text HHi 8.1307502 fonts/NotoSans-VariableFont_wdth_wght.ttf`
+   text_3d_bb.extents()=[[1.6470588326565991, 1.0, 1.0322128908740762]]
+   ```
 
+   Here is "HHi" rendered:
+
+   ![text_HHi](text_HHi_text_scale-8.131_font-NotoSans-VariableFont_wdth_wght.stl.png)
+
+   So this is another advantage of using height instead of scale.
 
 
 ## Usage
